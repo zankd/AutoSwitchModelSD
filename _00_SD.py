@@ -172,14 +172,13 @@ def clean_filename(seed, prompt, index):
     cleaned_prompt = re.sub(r'\W+', '', prompt)[:50]
     return f"{seed}_{cleaned_prompt}_{index}.png"
 
-def generate_unique_filename(seed, prompt, index, model_name=""):
+def generate_unique_filename(seed, prompt, model_name=""):
     cleaned_prompt = re.sub(r'\W+', '', prompt)[:50]
-    filename = f"{seed}_{cleaned_prompt}_{index}"
+    filename = f"{seed}_{cleaned_prompt}"
     if model_name:
         filename = f"{filename}_{model_name}"
 
     return f"{filename}.png"
-
 
 def get_model_from_history():
     try:
@@ -241,10 +240,13 @@ def generate_images():
 
             for index, image_data in enumerate(image_data_list):
                 image = Image.open(io.BytesIO(base64.b64decode(image_data)))
-                filename = generate_unique_filename(seed, new_payload['prompt'], index)
 
-                # Set the default model name if no models are available
-                model_name = 'UnknownModel'
+                # Get the model name from the history or a default value
+                model_name = get_model_from_history() or 'UnknownModel'
+
+                filename = generate_unique_filename(seed, new_payload['prompt'], model_name)
+                image.save(f'images/{filename}')
+                print(f"Image '{filename}' saved.")
 
                 if available_models:
                     # Extract the first model's checkpoint name
@@ -264,13 +266,6 @@ def generate_images():
                 hr_upscaler = new_payload.get('hr_upscaler', 'N/A')
                 hr_second_pass_steps = new_payload.get('hr_second_pass_steps', 'N/A')
 
-                # Extract lora_hashes from the payload
-                lora_hashes = "N/A"
-                alwayson_scripts = new_payload.get('alwayson_scripts', {})
-                simple_wildcards = alwayson_scripts.get('Simple wildcards', {})
-                if 'hashes' in simple_wildcards:
-                    lora_hashes = simple_wildcards['hashes']
-
                 # Create a text file with image details
                 with open(f'images/{filename}_{model_name}.txt', 'w') as file:
                     file.write(f"Image Details for {filename}:\n\n")
@@ -286,7 +281,6 @@ def generate_images():
                     file.write(f"Hires Upscale: {enable_hr}\n")
                     file.write(f"Hires Upscaler: {hr_upscaler}\n")
                     file.write(f"Hires Steps: {hr_second_pass_steps}\n")
-                    file.write(f"Lora Hashes: {lora_hashes}\n\n")
 
         else:
             print(f"Failed to generate images. Status code: {response.status_code}")
@@ -324,9 +318,9 @@ def generate_images_with_model(model_name, seed):
 
         for index, image_data in enumerate(image_data_list):
             image = Image.open(io.BytesIO(base64.b64decode(image_data)))
-            filename = generate_unique_filename(seed, new_payload['prompt'], index, model_name)
-            image.save(f'images/{filename}.png')
-            print(f"Image '{filename}.png' generated using model: {model_name}")
+            filename = generate_unique_filename(seed, new_payload['prompt'], model_name)
+            image.save(f'images/{filename}')
+            print(f"Image '{filename}' generated using model: {model_name}")
 
             # Extract additional details from new_payload
             steps = new_payload.get('steps', 'N/A')
@@ -338,13 +332,6 @@ def generate_images_with_model(model_name, seed):
             enable_hr = new_payload.get('enable_hr', 'N/A')
             hr_upscaler = new_payload.get('hr_upscaler', 'N/A')
             hr_second_pass_steps = new_payload.get('hr_second_pass_steps', 'N/A')
-
-            # Extract lora_hashes from the payload
-            lora_hashes = "N/A"
-            alwayson_scripts = new_payload.get('alwayson_scripts', {})
-            simple_wildcards = alwayson_scripts.get('Simple wildcards', {})
-            if 'hashes' in simple_wildcards:
-                lora_hashes = simple_wildcards['hashes']
 
             # Create a text file with image details
             with open(f'images/{filename}_{model_name}.txt', 'w') as file:
@@ -361,7 +348,6 @@ def generate_images_with_model(model_name, seed):
                 file.write(f"Hires Upscale: {enable_hr}\n")
                 file.write(f"Hires Upscaler: {hr_upscaler}\n")
                 file.write(f"Hires Steps: {hr_second_pass_steps}\n")
-                file.write(f"Lora Hashes: {lora_hashes}\n\n")
     else:
         print(f"Failed to generate images using model: {model_name}. Status code: {response.status_code}")
 
